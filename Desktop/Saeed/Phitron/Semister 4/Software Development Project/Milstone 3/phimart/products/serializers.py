@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from decimal import Decimal
-from products.models import Category, Product
+from products.models import Category, Product, Review
 
 class CategorySerializers(serializers.ModelSerializer):
     product_count = serializers.SerializerMethodField() 
@@ -11,24 +11,7 @@ class CategorySerializers(serializers.ModelSerializer):
 
     def get_product_count(self, obj):
         return Product.objects.filter(category=obj).count()
-
-# class ProductSerializer(serializers.Serializer):
-#     id = serializers.IntegerField()
-#     name = serializers.CharField()
-#     price = serializers.DecimalField(max_digits=10, decimal_places=2)
-#     tax = serializers.SerializerMethodField(method_name = 'calculate_tax_tax')
-#     price_with_tax = serializers.SerializerMethodField(method_name = 'calculate_tax')
-#     # category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
-#     # category = serializers.StringRelatedField()
-#     category = CategorySerializers()
-
-#     def calculate_tax(self,product):
-#         return round(product.price * Decimal(1.1), 2)
-    
-#     def calculate_tax_tax(self,product):
-#         return round(self.calculate_tax(product) - product.price, 2)
-
-
+ 
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -39,3 +22,14 @@ class ProductSerializer(serializers.ModelSerializer):
     price_with_tax = serializers.SerializerMethodField(method_name = 'calculate_tax')
     def calculate_tax(self,product):
         return round(product.price * Decimal(1.1), 2)
+    
+class ReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ['id', 'name', 'description']
+
+    def create(self, validated_data):
+        product_id = self.context['product_id']
+        product = Product.objects.get(pk=product_id)
+        review = Review.objects.create(product=product, **validated_data)
+        return review 

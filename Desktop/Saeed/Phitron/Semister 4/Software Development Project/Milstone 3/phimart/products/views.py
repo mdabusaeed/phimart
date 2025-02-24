@@ -1,63 +1,34 @@
-from django.shortcuts import get_object_or_404
-from django.http import HttpResponse
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from products.models import Product, Category
-from products.serializers import ProductSerializer, CategorySerializers
+from products.models import Product, Category, Review 
+from products.serializers import ProductSerializer, CategorySerializers, ReviewSerializer
 from django.db.models import Count
+from rest_framework.viewsets import ModelViewSet
+from django_filters.rest_framework import DjangoFilterBackend 
+from products.filters import ProductFilterSet
+from rest_framework.filters import SearchFilter, OrderingFilter
+from products.pagination import CustomPagination
 
-@api_view(['GET', 'POST'])
-def view_products(request):
-    if request.method == 'GET':
-        products = Product.objects.select_related('category').all()
-        serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)
+class ProductViewList(ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = ProductFilterSet
+    pagination_class = CustomPagination  
+    search_fields = ['name','description', 'category__name']
+    ordering_fields = ['price', 'stock']
+
     
-    elif request.method == 'POST':
-        serializer = ProductSerializer(data=request.data)
-        if serializer.is_valid():
-            print(serializer.validated_data)
-            serializer.save()
-            return Response(serializer.data, status = status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
-
-@api_view(['GET', 'PUT', 'DELETE'])
-def view_specific_products(request, id):
-    product = get_object_or_404(Product, pk=id)
-
-    if request.method == 'GET':
-        serializer = ProductSerializer(product)
-        return Response(serializer.data)
-
-    elif request.method == 'PUT': 
-        serializer = ProductSerializer(product, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=400)
-
-    elif request.method == 'DELETE':
-        product.delete()
-        return Response({"message": "Product deleted successfully"}, status=204)
+class CategoryViewList(ModelViewSet):
+    queryset = Category.objects.annotate(product_count=Count('products')).all()
+    serializer_class = CategorySerializers
 
 
-@api_view(['GET','POST'])
-def view_catogories(request):
-    if request.method == 'GET':
-        category = Category.objects.annotate(product_count = Count('products')).all()
-        serializer = CategorySerializers(category, many = True)
-        return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = CategorySerializers(data = request.data)
-        serializer.is_valid(raise_exception = True)
-        serializer.save()
-        return Response(serializer.data, status = status.HTTP_201_CREATED)
+class ReviewViewList(ModelViewSet):
+    serializer_class = ReviewSerializer
 
-
-@api_view()
-def view_specifiq_category(request, id):
-    category = get_object_or_404(Category, pk=id)
-    serializer = CategorySerializers(category)
-    return Response(serializer.data)
+    def get_queryset(self):
+        return Review.objects.filter(product_id=self.kwargs['product_pk'])
+    
+    def get_serializer_context(self):
+        return {'product_id': self.kwargs['product_pk']}  
