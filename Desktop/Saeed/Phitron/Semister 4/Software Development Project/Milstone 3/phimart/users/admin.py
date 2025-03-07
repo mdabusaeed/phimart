@@ -14,11 +14,12 @@ class CustomUserAdmin(UserAdmin):
         ('Important dates', {'fields': ('last_login', 'date_joined')}), 
     )
     add_fieldsets = (
-        None, {
+        (None, {  
             'classes': ('wide',),
             'fields': ('email', 'password1', 'password2', 'is_active', 'is_staff'),
-        },
+        }),
     )
+
     search_fields = ('email', 'first_name', 'last_name')
     ordering = ('email',)   
     
